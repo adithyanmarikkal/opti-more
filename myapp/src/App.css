@@ -1,18 +1,1 @@
-/* Minimal layout — no design yet */
-.main-content {
-  display: flex;
-  gap: 2rem;
-}
-
-.section {
-  flex: 1;
-}
-
-textarea {
-  width: 100%;
-  display: block;
-}
-
-.file-info {
-  margin-top: 0.5rem;
-}
+/* Custom utility overrides if needed */
