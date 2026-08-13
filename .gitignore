@@ -1,0 +1,27 @@
+# Environment variables — never commit secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Uploads (user files, not source code)
+server/uploads/
+
+# Node / Vite
+node_modules/
+myapp/dist/
+myapp/.vite/
+
+# IDE
+.vscode/
+.idea/
+*.swp
