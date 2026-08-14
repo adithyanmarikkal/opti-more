@@ -167,7 +167,3 @@ Resume_Analyser/
 - **Graceful error handling:** Non-JSON error responses (HTML error pages from proxies/cold starts) are stripped and surfaced as readable messages.
 
 ---
-
-## License
-
-MIT
