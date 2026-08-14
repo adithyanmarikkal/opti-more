@@ -1,3 +1,4 @@
+import os
 # pyrefly: ignore [missing-import]
 from fastapi import FastAPI, UploadFile, File, HTTPException
 # pyrefly: ignore [missing-import]
@@ -5,6 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 # pyrefly: ignore [missing-import]
 from pydantic import BaseModel
 from typing import Optional
+# pyrefly: ignore [missing-import]
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from upload import save_uploaded_file
 from extracttext import extract_text
@@ -14,9 +19,16 @@ from gemini import upload_pdf_to_gemini, analyse_resume_vs_jd
 app = FastAPI()
 
 # Allow frontend (Vite dev server) to talk to backend
+# ALLOWED_ORIGINS is a comma-separated list set in the .env file (or Render/Vercel env vars)
+_raw_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:5173",  # fallback for local dev
+)
+allow_origins = [o.strip().rstrip("/") for o in _raw_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "https://opti-more.vercel.app/"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
