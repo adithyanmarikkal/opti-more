@@ -1,5 +1,27 @@
 import { useState, useRef } from 'react'
 
+// In production (Vercel), VITE_BACKEND_URL points to the Render backend.
+// Locally it is empty so the Vite dev proxy handles /api/* as usual.
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, '') ?? ''
+
+// Parse an error response safely — handles JSON and plain HTML/text bodies.
+async function parseErrorResponse(res, fallback = 'Request failed') {
+  const ct = res.headers.get('content-type') || ''
+  if (ct.includes('application/json')) {
+    try {
+      const body = await res.json()
+      return body.detail || body.message || fallback
+    } catch {
+      return fallback
+    }
+  }
+  // HTML or plain-text error page (e.g. Render cold-start, Vite proxy 404)
+  const text = await res.text().catch(() => '')
+  // Strip HTML tags for a readable message
+  const clean = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120)
+  return clean || fallback
+}
+
 // Shared upload function — posts a file to the given API endpoint
 async function uploadFile(file, endpoint) {
   const formData = new FormData()
@@ -11,8 +33,8 @@ async function uploadFile(file, endpoint) {
   })
 
   if (!res.ok) {
-    const err = await res.json()
-    throw new Error(err.detail || 'Upload failed')
+    const msg = await parseErrorResponse(res, 'Upload failed')
+    throw new Error(msg)
   }
 
   return res.json()
@@ -70,7 +92,7 @@ function App() {
     setJobDescUploadResult(null)
 
     try {
-      const result = await uploadFile(file, '/api/upload/job-description')
+      const result = await uploadFile(file, `${BACKEND_URL}/api/upload/job-description`)
       setJobDescUploadResult(result)
     } catch (err) {
       alert('Job description upload failed: ' + err.message)
@@ -100,7 +122,7 @@ function App() {
     setResumeUploadResult(null)
 
     try {
-      const result = await uploadFile(file, '/api/upload/resume')
+      const result = await uploadFile(file, `${BACKEND_URL}/api/upload/resume`)
       setResumeUploadResult(result)
     } catch (err) {
       alert('Resume upload failed: ' + err.message)
@@ -149,15 +171,15 @@ function App() {
         jd_text: jobDescText || null,
       }
 
-      const res = await fetch('/api/analyse', {
+      const res = await fetch(`${BACKEND_URL}/api/analyse`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
 
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || 'Analysis failed')
+        const msg = await parseErrorResponse(res, 'Analysis failed')
+        throw new Error(msg)
       }
 
       const data = await res.json()

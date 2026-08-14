@@ -25,3 +25,4 @@ myapp/.vite/
 .vscode/
 .idea/
 *.swp
+.vercel
