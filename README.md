@@ -273,18 +273,6 @@ opti-more/
 
 ---
 
-## Roadmap
-
-- [ ] **DOCX / TXT resume support** — extend file-type validation and Gemini prompt to handle non-PDF resumes
-- [ ] **Exportable PDF report** — generate a downloadable ATS report card
-- [ ] **Score history** — local-storage based history of past analyses
-- [ ] **LinkedIn URL input** — scrape public profile as an alternative resume source
-- [ ] **Multi-JD comparison** — analyse one resume against several job descriptions simultaneously
-- [ ] **Dark mode** — CSS custom property toggle for a dark theme
-- [ ] **Rate limiting** — per-IP throttle on the `/api/analyse` endpoint to control Gemini API costs
-
----
-
 ## License
 
 MIT © 2026 OptiMore.ai
