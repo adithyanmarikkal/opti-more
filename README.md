@@ -3,7 +3,8 @@
 > **Get the score before the door.**  
 > Instantly analyse how well your resume matches a job description using Google Gemini AI.
 
-🔗 **Live Demo:** [opti-more.vercel.app](https://opti-more.vercel.app)
+🔗 **Live Demo:** [opti-more.vercel.app](https://opti-more.vercel.app)  
+⏳ Note: This app runs on the free tiers of Vercel and Render. If it has been idle for a while, the first request may take 30 to 60 seconds while the backend wakes up.
 
 ![OptiMore.ai — App Screenshot](docs/screenshot.png)
 
