@@ -5,6 +5,8 @@
 
 🔗 **Live Demo:** [opti-more.vercel.app](https://opti-more.vercel.app)
 
+![OptiMore.ai — App Screenshot](docs/screenshot.png)
+
 ---
 
 ## Overview
@@ -35,7 +37,7 @@ Built and deployed end-to-end: React frontend on Vercel, FastAPI backend on Rend
 | Layer | Technology |
 |---|---|
 | **Frontend** | React 19, Vite 8, Vanilla CSS |
-| **Backend** | Python, FastAPI, Uvicorn |
+| **Backend** | Python 3.11, FastAPI, Uvicorn |
 | **AI / LLM** | Google Gemini 3.6 Flash (`google-genai` SDK) |
 | **File Parsing** | PyMuPDF (PDF), python-docx (DOCX) |
 | **Deployment** | Vercel (frontend), Render (backend) |
@@ -45,7 +47,7 @@ Built and deployed end-to-end: React frontend on Vercel, FastAPI backend on Rend
 
 ## Architecture
 
-```
+```text
 Browser (Vercel)
     │
     ├─ POST /api/upload/resume      ──►  FastAPI (Render)
@@ -58,6 +60,107 @@ Browser (Vercel)
             └─ Gemini 3.6 Flash reads resume by URI + JD text
                → structured JSON response (score, skills, rewrites)
 ```
+
+> 📖 For full sequence diagrams, module maps, and state-machine docs see [`docs/architecture.md`](docs/architecture.md).
+
+---
+
+## API Reference
+
+### Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/` | Health check |
+| `POST` | `/api/upload/resume` | Upload PDF resume → pre-stages it in Gemini File API |
+| `POST` | `/api/upload/job-description` | Upload PDF/DOC/DOCX job description |
+| `POST` | `/api/analyse` | Run ATS match analysis — returns scored JSON report |
+
+### Example: `POST /api/analyse`
+
+**Request body:**
+```json
+{
+  "gemini_file_uri": "https://generativelanguage.googleapis.com/v1beta/files/abc123",
+  "jd_text": "We are looking for a Senior Python Engineer with FastAPI, PostgreSQL..."
+}
+```
+
+**Response `200`:**
+```json
+{
+  "overall_match_score": 74,
+  "summary": "Strong Python background with solid FastAPI experience. Missing cloud-native skills (Kubernetes, Terraform) that are high-priority for this role.",
+  "matching_skills": ["Python", "FastAPI", "REST APIs", "PostgreSQL", "Docker"],
+  "missing_skills": [
+    {
+      "skill": "Kubernetes",
+      "importance": "High",
+      "recommendation": "Obtain CKA certification or contribute a k8s side-project to demonstrate operational experience."
+    },
+    {
+      "skill": "Terraform",
+      "importance": "Medium",
+      "recommendation": "Complete the HashiCorp Terraform Associate learning path and provision a small cloud environment."
+    }
+  ],
+  "bullet_improvements": [
+    {
+      "original_text": "Built REST APIs using Flask.",
+      "improved_text": "Architected and deployed production-grade REST APIs with FastAPI, serving 50k+ daily requests with p99 latency under 120ms.",
+      "reasoning": "JD emphasises FastAPI and quantifiable production impact; original bullet lacked both."
+    }
+  ]
+}
+```
+
+**Error responses:**
+
+| Status | Cause |
+|---|---|
+| `400` | Wrong file type, missing JD input, or failed text extraction |
+| `413` | File exceeds the 5 MB limit |
+| `500` | Gemini returned unparseable JSON |
+| `503` | Gemini API unreachable or upload failed |
+
+---
+
+## Supported Formats & Limits
+
+| Input | Accepted formats | Max size |
+|---|---|---|
+| **Resume** | PDF only | 5 MB |
+| **Job Description** | PDF, DOC, DOCX, or plain text paste | 5 MB (file) |
+
+### Known Limitations
+
+- **Resume format only:** DOCX and plain-text resumes are not supported — PDF only.
+- **Gemini File API TTL:** Uploaded files are automatically deleted by Google after ~48 hours. Refreshing the page after that period requires re-uploading the resume.
+- **Render free tier cold starts:** The backend spins down after ~15 minutes of inactivity. The **first request after idle may take 30–60 seconds** while the container wakes up. Subsequent requests are fast. See the [cold-start note](#-cold-start-on-render-free-tier) below.
+- **Single-user sessions:** There is no authentication or session management; the `gemini_file_uri` is held in browser state only.
+- **JD text length:** Extremely long job descriptions (>10,000 words) may be truncated by the model's context window.
+
+---
+
+## ⚠️ Cold Start on Render Free Tier
+
+The backend is hosted on Render's **free tier**, which spins down the container after ~15 minutes of inactivity.
+
+- **First request after idle:** expect a **30–60 second delay** while Render wakes the service.
+- **Subsequent requests:** respond normally (< 3 s for upload, < 10 s for Gemini analysis).
+- The frontend surfaces a readable error message if the cold-start response is an HTML error page.
+
+To avoid cold starts in production, upgrade to a Render paid plan or add a scheduled ping (e.g. UptimeRobot every 10 minutes).
+
+---
+
+## 🔒 Privacy & Data Handling
+
+- **No user accounts or persistent storage.** No login is required and no personal data is stored in a database.
+- **Files are written to Render's ephemeral disk** (`server/uploads/`) under a UUID filename and are deleted whenever the Render container restarts.
+- **Resumes are forwarded to the Google Gemini File API** for AI inference. Files are subject to [Google's data usage policies](https://ai.google.dev/gemini-api/terms). Uploaded files are automatically deleted by Google within 48 hours.
+- **Job description text** is sent to the Gemini API as part of the analysis prompt and is not retained after the request completes.
+- **No analytics or tracking** are embedded in the frontend beyond what Vercel's own infrastructure logs.
 
 ---
 
@@ -136,8 +239,8 @@ Set `VITE_BACKEND_URL=https://<your-render-service>.onrender.com` in the Vercel 
 
 ## Project Structure
 
-```
-Resume_Analyser/
+```text
+opti-more/
 ├── server/
 │   ├── main.py          # FastAPI app, CORS, route definitions
 │   ├── upload.py        # File upload handler (size validation, UUID naming)
@@ -153,7 +256,9 @@ Resume_Analyser/
 │   ├── vite.config.js   # Vite config with dev proxy
 │   └── vercel.json      # Vercel deployment config
 │
-└── render.yaml          # Render Blueprint (one-click deploy)
+└── docs/
+    ├── architecture.md  # Full architecture diagrams and API contract
+    └── screenshot.png   # App screenshot
 ```
 
 ---
@@ -167,3 +272,19 @@ Resume_Analyser/
 - **Graceful error handling:** Non-JSON error responses (HTML error pages from proxies/cold starts) are stripped and surfaced as readable messages.
 
 ---
+
+## Roadmap
+
+- [ ] **DOCX / TXT resume support** — extend file-type validation and Gemini prompt to handle non-PDF resumes
+- [ ] **Exportable PDF report** — generate a downloadable ATS report card
+- [ ] **Score history** — local-storage based history of past analyses
+- [ ] **LinkedIn URL input** — scrape public profile as an alternative resume source
+- [ ] **Multi-JD comparison** — analyse one resume against several job descriptions simultaneously
+- [ ] **Dark mode** — CSS custom property toggle for a dark theme
+- [ ] **Rate limiting** — per-IP throttle on the `/api/analyse` endpoint to control Gemini API costs
+
+---
+
+## License
+
+MIT © 2026 OptiMore.ai
